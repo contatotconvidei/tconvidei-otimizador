@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Tconvidei Otimizador">
+<title>Tconvidei | Otimizador</title>
+<style>
+:root{--olive:#687052;--ink:#30312c;--line:#dedbd1;--paper:#fbfaf6;--red:#bf5147}
+*{box-sizing:border-box}body{margin:0;background:#f4f2ec;color:var(--ink);font-family:Arial,Helvetica,sans-serif}
+header{background:#fff;border-bottom:1px solid var(--line);padding:16px 22px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.brand{font:30px Georgia,serif;letter-spacing:1px}.sub{font-size:11px;letter-spacing:2px;color:#777;margin-left:12px}
+main{display:grid;grid-template-columns:320px minmax(320px,1fr);min-height:calc(100vh - 70px)}
+aside{background:#fff;padding:18px;border-right:1px solid var(--line)}.work{padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+h3{font-size:16px;margin:0 0 14px}label{font-size:12px;color:#666;display:block;margin-bottom:5px}
+input,select,button{font:inherit}input,select{width:100%;border:1px solid #d6d3c9;border-radius:7px;padding:9px;background:white}
+button{border:1px solid #d6d3c9;background:#fff;border-radius:8px;padding:9px 12px;cursor:pointer}button:hover{background:#f0efe8}.primary{background:var(--olive);border-color:var(--olive);color:white}
+.field{margin:10px 0}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px}.grid3{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:8px}
+.shape-row{display:grid;grid-template-columns:1fr 70px 70px 58px;gap:6px;align-items:end;margin:10px 0;padding:10px;border:1px solid var(--line);border-radius:8px}
+.shape-row .field{margin:0}.shape-row label{font-size:11px}.shape-row button{padding:8px 5px}
+.list{max-height:36vh;overflow:auto}.actions{display:flex;gap:8px;flex-wrap:wrap}
+.canvasbox{flex:1;min-height:420px;background:white;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+canvas{width:100%;height:100%;min-height:420px;display:block}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.stat{background:#fff;border:1px solid var(--line);padding:12px;border-radius:8px;font-size:12px}.stat b{display:block;font-size:18px;margin-top:5px}
+.note{font-size:12px;line-height:1.5;color:#777}.result{font-size:13px;padding:12px;border:1px solid #cbd6c2;background:#f0f5ec;border-radius:8px}
+@media(max-width:850px){main{grid-template-columns:1fr}aside{border-right:0;border-bottom:1px solid var(--line)}.list{max-height:none}.canvasbox{min-height:380px}}
+</style>
+<style>
+/* Ajustes específicos para celular e uso por toque */
+html { -webkit-text-size-adjust: 100%; }
+button, input, select { touch-action: manipulation; }
+button { min-height: 44px; }
+input, select { min-height: 44px; font-size: 16px; }
+header { padding: 12px 14px; }
+.brand { font-size: 27px; }
+header .actions { width: 100%; display: grid; grid-template-columns: 1fr 1fr; }
+header .actions button { width: 100%; }
+main { grid-template-columns: minmax(0, 1fr); }
+aside { padding: 14px; border-right: 0; border-bottom: 1px solid var(--line); }
+.work { padding: 12px; }
+.shape-row { grid-template-columns: minmax(0, 1fr) 64px 78px 42px; gap: 6px; }
+.shape-row input { padding: 8px 5px; min-width: 0; }
+.canvasbox { min-height: 52vh; }
+canvas { min-height: 52vh; }
+.stats { grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+.stat { padding: 9px 7px; overflow-wrap: anywhere; }
+.stat b { font-size: 15px; }
+@media (max-width: 480px) {
+  .sub { display: block; margin: 4px 0 0; letter-spacing: 1.5px; }
+  header { align-items: flex-start; }
+  .stats { grid-template-columns: 1fr; }
+  .stat { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .stat b { margin-top: 0; }
+  .shape-row { grid-template-columns: minmax(0, 1fr) 55px 68px 38px; }
+  .canvasbox { min-height: 48vh; }
+  canvas { min-height: 48vh; }
+  .work { padding: 9px; }
+  .actions { gap: 6px; }
+  button { padding: 10px 8px; }
+}
+</style>
+
+
+<style>
+/* Compatibilidade e ergonomia para Safari no iPhone */
+body { padding-bottom: env(safe-area-inset-bottom); }
+header { padding-top: max(12px, env(safe-area-inset-top)); }
+input, select, button { -webkit-appearance: none; appearance: none; }
+input[type="number"] { -webkit-appearance: none; appearance: none; }
+button { -webkit-tap-highlight-color: transparent; }
+.canvasbox { position: relative; }
+canvas { touch-action: pan-y; }
+@supports (-webkit-touch-callout: none) {
+  input, select { font-size: 16px; }
+  .canvasbox, canvas { -webkit-user-select: none; user-select: none; }
+}
+</style>
+
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#687052">
+<link rel="icon" href="./icon.svg" type="image/svg+xml">
+</head>
+<body>
+<header><div><span class="brand">tconvidei</span><span class="sub">OTIMIZADOR DE FORMAS</span></div><div class="actions"><button id="save">Salvar projeto</button><button id="open">Abrir projeto</button><input id="file" type="file" accept=".json" hidden><button id="png" class="primary">Exportar PNG</button></div></header>
+<main>
+<aside>
+<h3>1. Informe as peças</h3>
+<div class="grid2">
+<div class="field"><label>Tipo de forma</label><select id="type"><option value="rect">Retângulo</option><option value="square">Quadrado</option><option value="circle">Círculo</option><option value="triangle">Triângulo</option></select></div>
+<div class="field"><label>Quantidade</label><input id="qty" type="number" min="1" max="500" value="4"></div>
+</div>
+<div class="grid2">
+<div class="field"><label>Largura / diâmetro (cm)</label><input id="w" type="number" min="0.1" step="0.1" value="10"></div>
+<div class="field"><label>Altura (cm)</label><input id="h" type="number" min="0.1" step="0.1" value="5"></div>
+</div>
+<div class="field"><label>Nome do grupo (opcional)</label><input id="name" value="Peça"></div>
+<button id="add" class="primary" style="width:100%">Adicionar quantidade de peças</button>
+<div class="actions" style="margin-top:9px"><button id="clear">Limpar lista</button><button id="example">Carregar exemplo</button></div>
+<hr style="border:0;border-top:1px solid var(--line);margin:18px 0">
+<h3>Peças adicionadas</h3><div id="list" class="list"><p class="note">Adicione medidas e quantidades acima. O aplicativo organizará as peças automaticamente.</p></div>
+<div class="field"><label>Espaçamento entre peças (cm)</label><input id="gap" type="number" min="0" step="0.1" value="0.2"></div>
+<div class="field"><label>Margem externa (cm)</label><input id="margin" type="number" min="0" step="0.1" value="0.5"></div>
+<div class="field"><label>Orientação preferida</label><select id="rotate"><option value="yes">Permitir girar retângulos em 90°</option><option value="no">Manter orientação original</option></select></div>
+<button id="pack" class="primary" style="width:100%;padding:12px">Organizar automaticamente</button>
+<p class="note">Você informa as peças primeiro. O aplicativo calcula uma folha mínima estimada para acomodá-las e mostra as dimensões finais.</p>
+</aside>
+<section class="work">
+<div class="stats">
+<div class="stat">Largura estimada da folha<b id="outW">—</b></div>
+<div class="stat">Altura estimada da folha<b id="outH">—</b></div>
+<div class="stat">Total de peças<b id="outN">0</b></div>
+</div>
+<div class="result" id="summary">Adicione as peças acima e toque em “Organizar automaticamente”.</div>
+<div class="canvasbox"><canvas id="canvas"></canvas></div>
+<div class="note">Como funciona: o aplicativo testa diferentes larguras e usa um algoritmo heurístico de encaixe para procurar uma distribuição compacta. É uma estimativa prática, não uma garantia matemática da menor folha possível. Círculos e triângulos são posicionados dentro de suas caixas delimitadoras, de forma conservadora.</div>
+</section></main>
+<script>
+(()=>{
+const $=id=>document.getElementById(id),c=$('canvas'),ctx=c.getContext('2d');
+let groups=[],pieces=[],nextId=1,layout=null;
+const colors=['#d8c8b5','#cbd4c0','#d5dce2','#e5d0cb','#e5dcb7','#d3c9df','#c7d7d2'];
+const n=v=>Math.max(0,Number(v)||0),f=v=>(Math.round(v*100)/100).toLocaleString('pt-BR',{maximumFractionDigits:2});
+function adjust(){const t=$('type').value;if(t==='square'||t==='circle')$('h').value=$('w').value}
+$('type').onchange=()=>{if($('type').value==='square')$('h').value=$('w').value;if($('type').value==='circle')$('h').value=$('w').value};
+$('w').oninput=()=>{if(['square','circle'].includes($('type').value))$('h').value=$('w').value};
+function addGroup(type,qty,w,h,name){if(!(qty>0&&w>0&&h>0)){alert('Informe quantidade e medidas maiores que zero.');return}groups.push({id:nextId++,type,qty:Math.min(500,Math.floor(qty)),w,h,name:name||'Peça'});renderList()}
+$('add').onclick=()=>{let type=$('type').value,w=n($('w').value),h=n($('h').value);if(type==='square'||type==='circle')h=w;addGroup(type,n($('qty').value),w,h,$('name').value.trim())};
+$('clear').onclick=()=>{groups=[];pieces=[];layout=null;renderList();draw();stats()};
+$('example').onclick=()=>{groups=[{id:nextId++,type:'rect',qty:6,w:10,h:5,name:'Retângulo'},{id:nextId++,type:'square',qty:4,w:5,h:5,name:'Quadrado'},{id:nextId++,type:'circle',qty:4,w:4,h:4,name:'Círculo'}];renderList()};
+function renderList(){const el=$('list');if(!groups.length){el.innerHTML='<p class="note">Nenhum grupo adicionado.</p>';return}el.innerHTML=groups.map(g=>`<div class="shape-row"><div class="field"><label>Tipo / nome</label><div style="font-size:12px">${g.name}<br><span style="color:#777">${({rect:'Retângulo',square:'Quadrado',circle:'Círculo',triangle:'Triângulo'})[g.type]}</span></div></div><div class="field"><label>Qtd.</label><input data-id="${g.id}" data-key="qty" type="number" min="1" value="${g.qty}"></div><div class="field"><label>Largura</label><input data-id="${g.id}" data-key="w" type="number" min="0.1" step="0.1" value="${g.w}"></div><button data-remove="${g.id}" title="Remover">×</button><div style="grid-column:1/-1;font-size:11px;color:#777">${f(g.w)} × ${f(g.h)} cm</div></div>`).join('');el.querySelectorAll('input').forEach(inp=>inp.onchange=()=>{const g=groups.find(x=>x.id===+inp.dataset.id);if(!g)return;g[inp.dataset.key]=Math.max(.1,n(inp.value));if(g.type==='square'||g.type==='circle')g.h=g.w;else if(inp.dataset.key==='w'){/* height remains independent */}layout=null;renderList()});el.querySelectorAll('[data-remove]').forEach(b=>b.onclick=()=>{groups=groups.filter(g=>g.id!==+b.dataset.remove);layout=null;renderList()})}
+function expand(){let a=[];for(const g of groups){for(let i=0;i<g.qty;i++)a.push({id:a.length+1,type:g.type,w:g.w,h:g.h,name:g.name,color:colors[(g.id-1)%colors.length],rot:0})}return a}
+function dims(p,rot){return (rot%180===90)?{w:p.h,h:p.w}:{w:p.w,h:p.h}}
+function packWidth(input,W,gap,allowRotate){let placed=[],shelves=[],y=0,cur=null;const sorted=[...input].sort((a,b)=>Math.max(b.w,b.h)-Math.max(a.w,a.h)||b.w*b.h-a.w*a.h);
+for(const p of sorted){let opts=[{rot:0,...dims(p,0)}];if(allowRotate&&p.type==='rect')opts.push({rot:90,...dims(p,90)});let best=null;
+for(const o of opts){if(o.w>W+1e-7)continue;for(let si=0;si<=shelves.length;si++){let sh=shelves[si];if(!sh){if(si===shelves.length){let yy=shelves.length? shelves[shelves.length-1].y+shelves[shelves.length-1].h+gap:0;let cand={x:0,y:yy,w:o.w,h:o.h,rot:o.rot,newShelf:true,si};if(!best||cand.y+cand.h<best.y+best.h)best=cand;}continue}
+if(o.h<=sh.h+1e-7&&sh.x+sh.used+gap+o.w<=W+1e-7){let cand={x:sh.x+sh.used+gap,y:sh.y,w:o.w,h:o.h,rot:o.rot,newShelf:false,si};if(!best||cand.y+cand.h<best.y+best.h||(cand.y+cand.h===best.y+best.h&&cand.x<best.x))best=cand}}
+}
+if(!best)return null;
+if(best.newShelf){const sh={x:0,y:best.y,h:best.h,used:best.w};shelves.push(sh);placed.push({...p,x:best.x,y:best.y,rot:best.rot,pw:best.w,ph:best.h})}else{const sh=shelves[best.si];sh.used=best.x+best.w-sh.x;sh.h=Math.max(sh.h,best.h);placed.push({...p,x:best.x,y:best.y,rot:best.rot,pw:best.w,ph:best.h})}
+}
+let height=0;for(const p of placed)height=Math.max(height,p.y+p.ph);return {placed,width:W,height}}
+function optimize(){if(!groups.length){alert('Adicione pelo menos um grupo de peças.');return}const input=expand(),gap=n($('gap').value),margin=n($('margin').value),allow=$('rotate').value==='yes';if(input.length>500){alert('Limite de 500 peças por projeto.');return}
+const minW=Math.max(...input.map(p=>Math.min(p.w,p.h))),sumArea=input.reduce((s,p)=>s+p.w*p.h,0),sumWidths=input.reduce((s,p)=>s+Math.min(p.w,p.h),0);
+let lo=Math.max(minW,Math.sqrt(sumArea)*.65),hi=Math.max(...input.map(p=>Math.max(p.w,p.h)),sumWidths);hi=Math.max(hi,lo);let best=null;
+const trials=90;for(let i=0;i<trials;i++){const W=lo+(hi-lo)*i/(trials-1);const r=packWidth(input,W,gap,allow);if(r&&(!best||r.width*r.height<best.width*best.height))best=r}
+if(!best){alert('Não foi possível organizar as peças com esses parâmetros.');return}
+best.placed.forEach(p=>{p.x+=margin;p.y+=margin});best.width+=2*margin;best.height+=2*margin;best.area=best.width*best.height;layout=best;pieces=best.placed;stats();draw();$('summary').innerHTML=`<b>Organização concluída.</b> Folha estimada: ${f(best.width)} × ${f(best.height)} cm. Inclui espaçamento de ${f(gap)} cm entre peças e margem externa de ${f(margin)} cm. A disposição é uma solução heurística compacta; outras distribuições podem ser ainda menores.`}
+function stats(){if(layout){$('outW').textContent=f(layout.width)+' cm';$('outH').textContent=f(layout.height)+' cm';$('outN').textContent=pieces.length}else{$('outW').textContent='—';$('outH').textContent='—';$('outN').textContent=groups.reduce((s,g)=>s+g.qty,0)}}
+function draw(){const r=c.getBoundingClientRect(),dpr=window.devicePixelRatio||1;c.width=Math.max(1,Math.round(r.width*dpr));c.height=Math.max(1,Math.round(r.height*dpr));ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle='#fbfaf6';ctx.fillRect(0,0,r.width,r.height);if(!layout){ctx.fillStyle='#85857d';ctx.font='15px Arial';ctx.textAlign='center';ctx.fillText('Adicione as peças e clique em “Organizar automaticamente”.',r.width/2,r.height/2);return}
+const pad=45,scale=Math.min((r.width-pad*2)/layout.width,(r.height-pad*2)/layout.height),ox=(r.width-layout.width*scale)/2,oy=(r.height-layout.height*scale)/2;ctx.fillStyle='#fff';ctx.fillRect(ox,oy,layout.width*scale,layout.height*scale);ctx.strokeStyle='#687052';ctx.lineWidth=1.5;ctx.strokeRect(ox,oy,layout.width*scale,layout.height*scale);
+ctx.fillStyle='#5b5c54';ctx.font='12px Arial';ctx.textAlign='center';ctx.fillText(`${f(layout.width)} cm`,ox+layout.width*scale/2,oy-12);ctx.save();ctx.translate(ox-12,oy+layout.height*scale/2);ctx.rotate(-Math.PI/2);ctx.fillText(`${f(layout.height)} cm`,0,0);ctx.restore();
+for(const p of pieces){let w=p.pw,h=p.ph,x=ox+p.x*scale,y=oy+p.y*scale;ctx.beginPath();if(p.type==='circle')ctx.ellipse(x+w*scale/2,y+h*scale/2,w*scale/2,h*scale/2,0,0,Math.PI*2);else if(p.type==='triangle'){ctx.moveTo(x+w*scale/2,y);ctx.lineTo(x+w*scale,y+h*scale);ctx.lineTo(x,y+h*scale);ctx.closePath()}else ctx.rect(x,y,w*scale,h*scale);ctx.fillStyle=p.color;ctx.fill();ctx.strokeStyle='#55564e';ctx.lineWidth=1;ctx.stroke();if(w*scale>40&&h*scale>25){ctx.fillStyle='#33342f';ctx.font='10px Arial';ctx.textAlign='center';ctx.fillText(p.name,x+w*scale/2,y+h*scale/2+3)}}
+}
+$('pack').onclick=optimize;
+$('save').onclick=()=>{const data={version:1,groups,gap:$('gap').value,margin:$('margin').value,rotate:$('rotate').value,layout};const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));a.download='tconvidei-otimizador.json';a.click();URL.revokeObjectURL(a.href)};
+$('open').onclick=()=>$('file').click();$('file').onchange=async e=>{try{const d=JSON.parse(await e.target.files[0].text());groups=d.groups||[];$('gap').value=d.gap??.2;$('margin').value=d.margin??.5;$('rotate').value=d.rotate||'yes';layout=null;renderList();if(groups.length)optimize();else draw()}catch{alert('Arquivo de projeto inválido.')}e.target.value=''};
+$('png').onclick=()=>{if(!layout){alert('Organize as peças antes de exportar.');return}draw();const data=c.toDataURL('image/png');const a=document.createElement('a');a.download='tconvidei-folha-organizada.png';a.href=data;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>{if(/iPhone|iPad|iPod/i.test(navigator.userAgent)){const win=window.open();if(win){win.document.write('<title>Imagem do layout</title><meta name="viewport" content="width=device-width,initial-scale=1"><img style="width:100%;height:auto" src="'+data+'">');win.document.close();}}},250)};
+window.addEventListener('resize',draw);draw();stats();
+})();
+</script><script>
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+  window.addEventListener("load", () => navigator.serviceWorker.register("./service-worker.js").catch(() => {}));
+}
+</script>
+</body></html>

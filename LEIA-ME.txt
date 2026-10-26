@@ -1,0 +1,21 @@
+TCONVIDEI — OTIMIZADOR DE FORMAS (PWA)
+
+Conteúdo:
+- index.html: aplicativo
+- manifest.webmanifest: metadados para adicionar à Tela de Início
+- service-worker.js: cache offline
+- icon.svg: ícone
+
+Publicação gratuita sugerida:
+1. Crie/entre em uma conta GitHub.
+2. Crie um repositório público, por exemplo: tconvidei-otimizador.
+3. Envie todos os quatro arquivos para a raiz do repositório.
+4. Em Settings > Pages, escolha Deploy from a branch, selecione main e / (root), e salve.
+5. Aguarde o endereço HTTPS ser publicado.
+6. Abra o endereço no Safari do iPhone, carregue uma vez com internet.
+7. Toque em Compartilhar > Adicionar à Tela de Início. Se aparecer, ative “Abrir como App da Web”.
+
+Observações:
+- O modo offline depende de o site ter sido aberto online uma vez e de o Safari manter o cache.
+- Os arquivos JSON exportados pelo aplicativo continuam sendo a forma recomendada de backup dos projetos.
+- GitHub Pages é hospedagem estática; não requer servidor próprio.
