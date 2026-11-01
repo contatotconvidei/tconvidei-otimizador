@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Tconvidei Otimizador">
-<title>Tconvidei | Otimizador</title>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tconvidei | Otimizador de Formas — Versão 22</title>
 <style>
 :root{--olive:#687052;--ink:#30312c;--line:#dedbd1;--paper:#fbfaf6;--red:#bf5147}
 *{box-sizing:border-box}body{margin:0;background:#f4f2ec;color:var(--ink);font-family:Arial,Helvetica,sans-serif}
@@ -22,6 +22,12 @@ canvas{width:100%;height:100%;min-height:420px;display:block}
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.stat{background:#fff;border:1px solid var(--line);padding:12px;border-radius:8px;font-size:12px}.stat b{display:block;font-size:18px;margin-top:5px}
 .note{font-size:12px;line-height:1.5;color:#777}.result{font-size:13px;padding:12px;border:1px solid #cbd6c2;background:#f0f5ec;border-radius:8px}
 @media(max-width:850px){main{grid-template-columns:1fr}aside{border-right:0;border-bottom:1px solid var(--line)}.list{max-height:none}.canvasbox{min-height:380px}}
+
+.history-toolbar{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 18px;padding:8px;background:#f4f3ed;border:1px solid var(--line);border-radius:10px}
+.history-toolbar button{display:flex;align-items:center;justify-content:center;gap:7px;padding:10px 8px;font-size:12px;font-weight:700;color:var(--ink);background:#fff}
+.history-toolbar button:disabled{cursor:not-allowed;opacity:.38}
+.history-toolbar button:not(:disabled):hover{background:#e9ecdf;border-color:var(--olive)}
+.history-symbol{font-size:21px;line-height:1;color:var(--olive)}
 </style>
 <style>
 /* Ajustes específicos para celular e uso por toque */
@@ -74,11 +80,27 @@ canvas { touch-action: pan-y; }
 }
 </style>
 
-<link rel="manifest" href="./manifest.webmanifest">
-<meta name="theme-color" content="#687052">
+
+
 <link rel="icon" href="./icon.svg" type="image/svg+xml">
+
+<style>
+/* Versão para computador: painel de controles e área de desenho lado a lado. */
+body { min-width: 900px; }
+header { padding: 18px 24px; }
+main { grid-template-columns: 360px minmax(520px, 1fr) !important; align-items: stretch; }
+aside { max-height: calc(100vh - 110px); overflow-y: auto; }
+.workspace { min-width: 0; }
+.canvasbox { min-height: 620px !important; height: calc(100vh - 230px); }
+canvas { min-height: 620px !important; }
+@media (max-width: 1050px) {
+  main { grid-template-columns: 320px minmax(480px, 1fr) !important; }
+}
+</style>
+
 </head>
 <body>
+<div style="background:#eef0e8;color:#41483a;padding:8px 18px;font:13px Arial,sans-serif;text-align:center">Versão 18 — botões de histórico na lateral esquerda. Recomendada para Google Chrome. Salve este arquivo e abra-o no Chrome; funciona localmente, sem instalação.</div>
 <header><div><span class="brand">tconvidei</span><span class="sub">OTIMIZADOR DE FORMAS</span></div><div class="actions"><button id="save">Salvar projeto</button><button id="open">Abrir projeto</button><input id="file" type="file" accept=".json" hidden><button id="png" class="primary">Exportar PNG</button></div></header>
 <main>
 <aside>
@@ -100,6 +122,12 @@ canvas { touch-action: pan-y; }
 <div class="field"><label>Margem externa (cm)</label><input id="margin" type="number" min="0" step="0.1" value="0.5"></div>
 <div class="field"><label>Orientação preferida</label><select id="rotate"><option value="yes">Permitir girar retângulos em 90°</option><option value="no">Manter orientação original</option></select></div>
 <button id="pack" class="primary" style="width:100%;padding:12px">Organizar automaticamente</button>
+<div class="history-toolbar" aria-label="Histórico de posições">
+<button id="undo" disabled title="Voltar à posição anterior (Ctrl + Z)"><span class="history-symbol">↶</span><span>Voltar</span></button>
+<button id="redo" disabled title="Avançar para a próxima posição (Ctrl + Y)"><span class="history-symbol">↷</span><span>Seguinte</span></button>
+</div>
+
+<p class="note" style="margin-top:6px">Use os controles do histórico à esquerda ou os atalhos do teclado para voltar e avançar nas posições.</p>
 <p class="note">Você informa as peças primeiro. O aplicativo calcula uma folha mínima estimada para acomodá-las e mostra as dimensões finais.</p>
 </aside>
 <section class="work">
@@ -110,12 +138,42 @@ canvas { touch-action: pan-y; }
 </div>
 <div class="result" id="summary">Adicione as peças acima e toque em “Organizar automaticamente”.</div>
 <div class="canvasbox"><canvas id="canvas"></canvas></div>
-<div class="note">Como funciona: o aplicativo testa diferentes larguras e usa um algoritmo heurístico de encaixe para procurar uma distribuição compacta. É uma estimativa prática, não uma garantia matemática da menor folha possível. Círculos e triângulos são posicionados dentro de suas caixas delimitadoras, de forma conservadora.</div>
+<div id="layoutCaption" style="text-align:center;font-weight:600;margin:10px 0 16px;color:#4f5148">Sugestão de medidas e layout da caixa</div>
+<div class="note">Como funciona: o aplicativo testa diferentes larguras e usa um algoritmo heurístico de encaixe para procurar uma distribuição compacta. É uma estimativa prática, não uma garantia matemática da menor folha possível. O algoritmo também favorece folhas com proporções mais próximas de um formato quadrado. As cotas mostram a medida de cada aresta (repetida nos lados opostos); círculos e triângulos são posicionados dentro de suas caixas delimitadoras, de forma conservadora.</div>
 </section></main>
 <script>
 (()=>{
 const $=id=>document.getElementById(id),c=$('canvas'),ctx=c.getContext('2d');
 let groups=[],pieces=[],nextId=1,layout=null;
+let undoStack=[],redoStack=[];
+function cloneState(){return JSON.parse(JSON.stringify({pieces,layout}));}
+function updateHistoryButtons(){
+  $('undo').disabled=!undoStack.length;$('redo').disabled=!redoStack.length;
+  $('undo').style.opacity=undoStack.length?'1':'.45';$('redo').style.opacity=redoStack.length?'1':'.45';
+}
+function commitHistory(before){
+  const after=cloneState();if(!before||JSON.stringify(before)===JSON.stringify(after)){updateHistoryButtons();return;}
+  undoStack.push(before);if(undoStack.length>100)undoStack.shift();redoStack=[];updateHistoryButtons();
+}
+function restoreHistoryState(state){
+  pieces=JSON.parse(JSON.stringify(state.pieces||[]));layout=state.layout?JSON.parse(JSON.stringify(state.layout)):null;
+  selectedPieceIds.clear();selectedPieceId=null;chainOrigins.clear();stats();draw();updateHistoryButtons();
+}
+function undo(){
+  if(!undoStack.length)return;redoStack.push(cloneState());restoreHistoryState(undoStack.pop());
+  $('summary').innerHTML='<b>Etapa anterior restaurada.</b> Use “Refazer” para avançar novamente.';
+}
+function redo(){
+  if(!redoStack.length)return;undoStack.push(cloneState());restoreHistoryState(redoStack.pop());
+  $('summary').innerHTML='<b>Próxima etapa restaurada.</b> Use “Desfazer” para voltar.';
+}
+$('undo').onclick=undo;$('redo').onclick=redo;
+document.addEventListener('keydown',e=>{
+  if(!['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)&&(e.ctrlKey||e.metaKey)){
+    if(e.key.toLowerCase()==='z'){e.preventDefault();if(e.shiftKey)redo();else undo();}
+    else if(e.key.toLowerCase()==='y'){e.preventDefault();redo();}
+  }
+});
 const colors=['#d8c8b5','#cbd4c0','#d5dce2','#e5d0cb','#e5dcb7','#d3c9df','#c7d7d2'];
 const n=v=>Math.max(0,Number(v)||0),f=v=>(Math.round(v*100)/100).toLocaleString('pt-BR',{maximumFractionDigits:2});
 function adjust(){const t=$('type').value;if(t==='square'||t==='circle')$('h').value=$('w').value}
@@ -123,12 +181,22 @@ $('type').onchange=()=>{if($('type').value==='square')$('h').value=$('w').value;
 $('w').oninput=()=>{if(['square','circle'].includes($('type').value))$('h').value=$('w').value};
 function addGroup(type,qty,w,h,name){if(!(qty>0&&w>0&&h>0)){alert('Informe quantidade e medidas maiores que zero.');return}groups.push({id:nextId++,type,qty:Math.min(500,Math.floor(qty)),w,h,name:name||'Peça'});renderList()}
 $('add').onclick=()=>{let type=$('type').value,w=n($('w').value),h=n($('h').value);if(type==='square'||type==='circle')h=w;addGroup(type,n($('qty').value),w,h,$('name').value.trim())};
-$('clear').onclick=()=>{groups=[];pieces=[];layout=null;renderList();draw();stats()};
+$('clear').onclick=()=>{groups=[];pieces=[];layout=null;undoStack=[];redoStack=[];updateHistoryButtons();renderList();draw();stats()};
 $('example').onclick=()=>{groups=[{id:nextId++,type:'rect',qty:6,w:10,h:5,name:'Retângulo'},{id:nextId++,type:'square',qty:4,w:5,h:5,name:'Quadrado'},{id:nextId++,type:'circle',qty:4,w:4,h:4,name:'Círculo'}];renderList()};
 function renderList(){const el=$('list');if(!groups.length){el.innerHTML='<p class="note">Nenhum grupo adicionado.</p>';return}el.innerHTML=groups.map(g=>`<div class="shape-row"><div class="field"><label>Tipo / nome</label><div style="font-size:12px">${g.name}<br><span style="color:#777">${({rect:'Retângulo',square:'Quadrado',circle:'Círculo',triangle:'Triângulo'})[g.type]}</span></div></div><div class="field"><label>Qtd.</label><input data-id="${g.id}" data-key="qty" type="number" min="1" value="${g.qty}"></div><div class="field"><label>Largura</label><input data-id="${g.id}" data-key="w" type="number" min="0.1" step="0.1" value="${g.w}"></div><button data-remove="${g.id}" title="Remover">×</button><div style="grid-column:1/-1;font-size:11px;color:#777">${f(g.w)} × ${f(g.h)} cm</div></div>`).join('');el.querySelectorAll('input').forEach(inp=>inp.onchange=()=>{const g=groups.find(x=>x.id===+inp.dataset.id);if(!g)return;g[inp.dataset.key]=Math.max(.1,n(inp.value));if(g.type==='square'||g.type==='circle')g.h=g.w;else if(inp.dataset.key==='w'){/* height remains independent */}layout=null;renderList()});el.querySelectorAll('[data-remove]').forEach(b=>b.onclick=()=>{groups=groups.filter(g=>g.id!==+b.dataset.remove);layout=null;renderList()})}
 function expand(){let a=[];for(const g of groups){for(let i=0;i<g.qty;i++)a.push({id:a.length+1,type:g.type,w:g.w,h:g.h,name:g.name,color:colors[(g.id-1)%colors.length],rot:0})}return a}
 function dims(p,rot){return (rot%180===90)?{w:p.h,h:p.w}:{w:p.w,h:p.h}}
-function packWidth(input,W,gap,allowRotate){let placed=[],shelves=[],y=0,cur=null;const sorted=[...input].sort((a,b)=>Math.max(b.w,b.h)-Math.max(a.w,a.h)||b.w*b.h-a.w*a.h);
+function packWidth(input,W,gap,allowRotate,sortMode=0){
+let placed=[],shelves=[];
+const scoreFns=[
+ (a,b)=>Math.max(b.w,b.h)-Math.max(a.w,a.h)||b.w*b.h-a.w*a.h,
+ (a,b)=>b.w*b.h-a.w*a.h||Math.max(b.w,b.h)-Math.max(a.w,a.h),
+ (a,b)=>Math.max(b.w,b.h)-Math.max(a.w,a.h)||Math.min(b.w,b.h)-Math.min(a.w,a.h),
+ (a,b)=>b.h-a.h||b.w-a.w,
+ (a,b)=>(b.w+b.h)-(a.w+a.h)||b.w*b.h-a.w*a.h,
+ (a,b)=>Math.abs(b.w-b.h)-Math.abs(a.w-a.h)||b.w*b.h-a.w*a.h
+];
+const sorted=[...input].sort(scoreFns[sortMode%scoreFns.length]);
 for(const p of sorted){let opts=[{rot:0,...dims(p,0)}];if(allowRotate&&p.type==='rect')opts.push({rot:90,...dims(p,90)});let best=null;
 for(const o of opts){if(o.w>W+1e-7)continue;for(let si=0;si<=shelves.length;si++){let sh=shelves[si];if(!sh){if(si===shelves.length){let yy=shelves.length? shelves[shelves.length-1].y+shelves[shelves.length-1].h+gap:0;let cand={x:0,y:yy,w:o.w,h:o.h,rot:o.rot,newShelf:true,si};if(!best||cand.y+cand.h<best.y+best.h)best=cand;}continue}
 if(o.h<=sh.h+1e-7&&sh.x+sh.used+gap+o.w<=W+1e-7){let cand={x:sh.x+sh.used+gap,y:sh.y,w:o.w,h:o.h,rot:o.rot,newShelf:false,si};if(!best||cand.y+cand.h<best.y+best.h||(cand.y+cand.h===best.y+best.h&&cand.x<best.x))best=cand}}
@@ -137,18 +205,253 @@ if(!best)return null;
 if(best.newShelf){const sh={x:0,y:best.y,h:best.h,used:best.w};shelves.push(sh);placed.push({...p,x:best.x,y:best.y,rot:best.rot,pw:best.w,ph:best.h})}else{const sh=shelves[best.si];sh.used=best.x+best.w-sh.x;sh.h=Math.max(sh.h,best.h);placed.push({...p,x:best.x,y:best.y,rot:best.rot,pw:best.w,ph:best.h})}
 }
 let height=0;for(const p of placed)height=Math.max(height,p.y+p.ph);return {placed,width:W,height}}
-function optimize(){if(!groups.length){alert('Adicione pelo menos um grupo de peças.');return}const input=expand(),gap=n($('gap').value),margin=n($('margin').value),allow=$('rotate').value==='yes';if(input.length>500){alert('Limite de 500 peças por projeto.');return}
+function optimize(){const historyBefore=cloneState();if(!groups.length){alert('Adicione pelo menos um grupo de peças.');return}const input=expand(),gap=n($('gap').value),margin=n($('margin').value),allow=$('rotate').value==='yes';if(input.length>500){alert('Limite de 500 peças por projeto.');return}
 const minW=Math.max(...input.map(p=>Math.min(p.w,p.h))),sumArea=input.reduce((s,p)=>s+p.w*p.h,0),sumWidths=input.reduce((s,p)=>s+Math.min(p.w,p.h),0);
 let lo=Math.max(minW,Math.sqrt(sumArea)*.65),hi=Math.max(...input.map(p=>Math.max(p.w,p.h)),sumWidths);hi=Math.max(hi,lo);let best=null;
-const trials=90;for(let i=0;i<trials;i++){const W=lo+(hi-lo)*i/(trials-1);const r=packWidth(input,W,gap,allow);if(r&&(!best||r.width*r.height<best.width*best.height))best=r}
+const trials=150;
+for(let mode=0;mode<6;mode++){
+  for(let i=0;i<trials;i++){
+    const W=lo+(hi-lo)*i/(trials-1);
+    const r=packWidth(input,W,gap,allow,mode);
+    if(r){
+      // Prioriza a menor área real; usa desempate leve para evitar folhas excessivamente estreitas.
+      const ratio=Math.max(r.width,r.height)/Math.max(0.001,Math.min(r.width,r.height));
+      const score=r.width*r.height*(1+0.015*Math.max(0,ratio-1));
+      if(!best||score<best.score){best=r;best.score=score;best.sortMode=mode}
+    }
+  }
+}
 if(!best){alert('Não foi possível organizar as peças com esses parâmetros.');return}
-best.placed.forEach(p=>{p.x+=margin;p.y+=margin});best.width+=2*margin;best.height+=2*margin;best.area=best.width*best.height;layout=best;pieces=best.placed;stats();draw();$('summary').innerHTML=`<b>Organização concluída.</b> Folha estimada: ${f(best.width)} × ${f(best.height)} cm. Inclui espaçamento de ${f(gap)} cm entre peças e margem externa de ${f(margin)} cm. A disposição é uma solução heurística compacta; outras distribuições podem ser ainda menores.`}
+best.placed.forEach(p=>{p.x+=margin;p.y+=margin});pieces=best.placed;best.width=Math.ceil(Math.max(...pieces.map(p=>p.x+p.pw))+margin-1e-9);best.height=Math.ceil(Math.max(...pieces.map(p=>p.y+p.ph))+margin-1e-9);best.width=Math.max(best.width,Math.ceil(Math.max(...pieces.map(p=>p.pw))+2*margin-1e-9));best.height=Math.max(best.height,Math.ceil(Math.max(...pieces.map(p=>p.ph))+2*margin-1e-9));best.area=best.width*best.height;const minX=Math.min(...pieces.map(p=>p.x)),maxX=Math.max(...pieces.map(p=>p.x+p.pw)),minY=Math.min(...pieces.map(p=>p.y)),maxY=Math.max(...pieces.map(p=>p.y+p.ph));const shiftX=(best.width-(maxX-minX)-2*margin)/2-minX+margin;const shiftY=(best.height-(maxY-minY)-2*margin)/2-minY+margin;pieces.forEach(p=>{p.x+=shiftX;p.y+=shiftY});
+best.referencePositions=pieces.map(p=>({id:p.id,x:p.x,y:p.y,pw:p.pw,ph:p.ph}));
+best.referenceWidth=best.width;best.referenceHeight=best.height;
+layout=best;selectedPieceIds.clear();stats();draw();$('summary').innerHTML=`<b>Organização concluída.</b> Folha: ${f(best.width)} × ${f(best.height)} cm (${f(best.width*best.height)} cm²). Aproveitamento geométrico: ${f((input.reduce((a,p)=>a+p.w*p.h,0)/(best.width*best.height))*100)}%. Foram testadas 900 combinações de largura e ordem de distribuição para buscar uma área menor, mantendo margens e espaçamentos.`;commitHistory(historyBefore)}
+function recalcSheetSize(){
+  if(!layout||!pieces.length)return;
+  const margin=Math.max(0,n($('margin').value));
+  // Envolve exatamente o conjunto na posição atual, preservando a margem externa.
+  // Reposiciona o conjunto para que a margem esquerda/superior também seja respeitada.
+  const minX=Math.min(...pieces.map(p=>p.x));
+  const minY=Math.min(...pieces.map(p=>p.y));
+  const dx=margin-minX,dy=margin-minY;
+  for(const p of pieces){p.x+=dx;p.y+=dy;}
+  // Se todas as peças retornaram praticamente às posições do layout automático,
+  // recupera as coordenadas e dimensões originais exatas (evita acumular décimos
+  // de centímetro durante arrastes sucessivos).
+  if(Array.isArray(layout.referencePositions)&&layout.referencePositions.length===pieces.length){
+    const tol=0.15;
+    const returned=pieces.every(p=>{
+      const ref=layout.referencePositions.find(r=>r.id===p.id);
+      return ref&&Math.abs(p.x-ref.x)<=tol&&Math.abs(p.y-ref.y)<=tol&&
+        Math.abs(p.pw-ref.pw)<=1e-6&&Math.abs(p.ph-ref.ph)<=1e-6;
+    });
+    if(returned){
+      for(const p of pieces){const ref=layout.referencePositions.find(r=>r.id===p.id);p.x=ref.x;p.y=ref.y;}
+      layout.width=layout.referenceWidth;layout.height=layout.referenceHeight;
+      layout.area=layout.width*layout.height;stats();return;
+    }
+  }
+  const maxRight=Math.max(...pieces.map(p=>p.x+p.pw));
+  const maxBottom=Math.max(...pieces.map(p=>p.y+p.ph));
+  const minWidth=Math.max(...pieces.map(p=>p.pw))+2*margin;
+  const minHeight=Math.max(...pieces.map(p=>p.ph))+2*margin;
+  // Arredonda sempre para o próximo centímetro inteiro, sem cortar nenhuma peça.
+  layout.width=Math.max(Math.ceil(maxRight+margin-1e-9),Math.ceil(minWidth-1e-9));
+  layout.height=Math.max(Math.ceil(maxBottom+margin-1e-9),Math.ceil(minHeight-1e-9));
+  layout.area=layout.width*layout.height;
+  stats();
+}
 function stats(){if(layout){$('outW').textContent=f(layout.width)+' cm';$('outH').textContent=f(layout.height)+' cm';$('outN').textContent=pieces.length}else{$('outW').textContent='—';$('outH').textContent='—';$('outN').textContent=groups.reduce((s,g)=>s+g.qty,0)}}
 function draw(){const r=c.getBoundingClientRect(),dpr=window.devicePixelRatio||1;c.width=Math.max(1,Math.round(r.width*dpr));c.height=Math.max(1,Math.round(r.height*dpr));ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle='#fbfaf6';ctx.fillRect(0,0,r.width,r.height);if(!layout){ctx.fillStyle='#85857d';ctx.font='15px Arial';ctx.textAlign='center';ctx.fillText('Adicione as peças e clique em “Organizar automaticamente”.',r.width/2,r.height/2);return}
 const pad=45,scale=Math.min((r.width-pad*2)/layout.width,(r.height-pad*2)/layout.height),ox=(r.width-layout.width*scale)/2,oy=(r.height-layout.height*scale)/2;ctx.fillStyle='#fff';ctx.fillRect(ox,oy,layout.width*scale,layout.height*scale);ctx.strokeStyle='#687052';ctx.lineWidth=1.5;ctx.strokeRect(ox,oy,layout.width*scale,layout.height*scale);
 ctx.fillStyle='#5b5c54';ctx.font='12px Arial';ctx.textAlign='center';ctx.fillText(`${f(layout.width)} cm`,ox+layout.width*scale/2,oy-12);ctx.save();ctx.translate(ox-12,oy+layout.height*scale/2);ctx.rotate(-Math.PI/2);ctx.fillText(`${f(layout.height)} cm`,0,0);ctx.restore();
-for(const p of pieces){let w=p.pw,h=p.ph,x=ox+p.x*scale,y=oy+p.y*scale;ctx.beginPath();if(p.type==='circle')ctx.ellipse(x+w*scale/2,y+h*scale/2,w*scale/2,h*scale/2,0,0,Math.PI*2);else if(p.type==='triangle'){ctx.moveTo(x+w*scale/2,y);ctx.lineTo(x+w*scale,y+h*scale);ctx.lineTo(x,y+h*scale);ctx.closePath()}else ctx.rect(x,y,w*scale,h*scale);ctx.fillStyle=p.color;ctx.fill();ctx.strokeStyle='#55564e';ctx.lineWidth=1;ctx.stroke();if(w*scale>40&&h*scale>25){ctx.fillStyle='#33342f';ctx.font='10px Arial';ctx.textAlign='center';ctx.fillText(p.name,x+w*scale/2,y+h*scale/2+3)}}
+for(const p of pieces){let w=p.pw,h=p.ph,x=ox+p.x*scale,y=oy+p.y*scale;ctx.beginPath();if(p.type==='circle')ctx.ellipse(x+w*scale/2,y+h*scale/2,w*scale/2,h*scale/2,0,0,Math.PI*2);else if(p.type==='triangle'){ctx.moveTo(x+w*scale/2,y);ctx.lineTo(x+w*scale,y+h*scale);ctx.lineTo(x,y+h*scale);ctx.closePath()}else ctx.rect(x,y,w*scale,h*scale);ctx.fillStyle=p.color;ctx.fill();ctx.strokeStyle='#55564e';ctx.lineWidth=1;ctx.stroke();
+/* Cotas lineares em cada aresta: largura no topo/base e altura nas laterais. */
+ctx.save();ctx.fillStyle='#222';ctx.strokeStyle='#444';ctx.lineWidth=.7;ctx.font='10px Arial';ctx.textAlign='center';
+const labelW=`${f(w)} cm`, labelH=`${f(h)} cm`;
+if(p.type==='circle'){
+  const cx=x+w*scale/2, cy=y+h*scale/2, diameterLabel=`Ø ${f(w)} cm`;
+  if(Math.min(w,h)*scale>32){
+    ctx.fillStyle='#33342f';ctx.font='10px Arial';
+    const maxTextWidth=w*scale*.78;let words=String(p.name||'').split(/\s+/),lines=[],line='';
+    for(const word of words){const test=line?line+' '+word:word;if(ctx.measureText(test).width>maxTextWidth&&line){lines.push(line);line=word}else line=test}if(line)lines.push(line);
+    const lineH=11, totalH=lines.length*lineH+13, startY=cy-totalH/2+lineH/2;
+    lines.forEach((txt,i)=>ctx.fillText(txt,cx,startY+i*lineH));
+    ctx.fillStyle='#222';ctx.font='9px Arial';ctx.fillText(diameterLabel,cx,startY+lines.length*lineH+3);
+  }
+} else if(p.type==='triangle'){
+  const side=Math.sqrt((w/2)*(w/2)+h*h);
+  if(w*scale>34)ctx.fillText(`Base ${f(w)} cm`,x+w*scale/2,y+h*scale+11);
+  if(h*scale>30){
+    ctx.save();ctx.translate(x+w*scale*.25,y+h*scale*.52);ctx.rotate(-Math.atan2(h,w/2));ctx.fillText(`${f(side)} cm`,0,-3);ctx.restore();
+    ctx.save();ctx.translate(x+w*scale*.75,y+h*scale*.52);ctx.rotate(Math.atan2(h,w/2));ctx.fillText(`${f(side)} cm`,0,-3);ctx.restore();
+  }
+} else {
+  // Cotas dentro da peça e paralelas às respectivas arestas.
+  const cx=x+w*scale/2,cy=y+h*scale/2;
+  if(w*scale>34){
+    ctx.fillStyle='#222';ctx.font='9px Arial';ctx.textAlign='center';
+    ctx.fillText(labelW,cx,y+12);
+  }
+  if(Math.abs(w-h)>0.01 && h*scale>34){
+    ctx.save();ctx.translate(x+w*scale-10,cy);ctx.rotate(Math.PI/2);ctx.fillStyle='#222';ctx.font='9px Arial';ctx.fillText(labelH,0,0);ctx.restore();
+  }
+  if(w*scale>42&&h*scale>32){
+    ctx.fillStyle='#33342f';ctx.font='10px Arial';ctx.textAlign='center';
+    ctx.fillText(String(p.name||''),cx,cy+3);
+  }
 }
+ctx.restore();}
+if(dragState&&dragState.snapGuide){
+  const g=dragState.snapGuide;
+  ctx.save();ctx.strokeStyle='#e53935';ctx.lineWidth=1.5;ctx.setLineDash([5,5]);
+  ctx.beginPath();
+  if(g.axis==='x'){const gx=ox+g.pos*scale;ctx.moveTo(gx,oy);ctx.lineTo(gx,oy+layout.height*scale);}
+  else{const gy=oy+g.pos*scale;ctx.moveTo(ox,gy);ctx.lineTo(ox+layout.width*scale,gy);}
+  ctx.stroke();ctx.restore();
+}
+}
+
+/* Seleção múltipla com Ctrl; movimento em apenas um eixo por arraste. */
+let dragState=null,selectedPieceId=null,selectedPieceIds=new Set();
+// Guarda a posição original de peças deslocadas por empurrões em cadeia.
+const chainOrigins=new Map();
+function canvasTransform(){const r=c.getBoundingClientRect(),pad=45;const scale=Math.min((r.width-pad*2)/layout.width,(r.height-pad*2)/layout.height);return {r,scale,ox:(r.width-layout.width*scale)/2,oy:(r.height-layout.height*scale)/2};}
+function overlapsWithGap(a,b,g){return !(a.x+a.pw+g<=b.x+1e-7||b.x+b.pw+g<=a.x+1e-7||a.y+a.ph+g<=b.y+1e-7||b.y+b.ph+g<=a.y+1e-7);}
+function selectionValid(moved,gap,margin){for(const p of moved){if(p.x<margin-1e-7||p.y<margin-1e-7||p.x+p.pw>layout.width-margin+1e-7||p.y+p.ph>layout.height-margin+1e-7)return false;for(const q of pieces){if(moved.includes(q))continue;if(overlapsWithGap(p,q,gap))return false;}}for(let i=0;i<moved.length;i++)for(let j=i+1;j<moved.length;j++)if(overlapsWithGap(moved[i],moved[j],gap))return false;return true;}
+function spacingValid(moved,gap){for(const p of moved){for(const q of pieces){if(moved.includes(q))continue;if(overlapsWithGap(p,q,gap))return false;}}for(let i=0;i<moved.length;i++)for(let j=i+1;j<moved.length;j++)if(overlapsWithGap(moved[i],moved[j],gap))return false;return true;}
+function applyAlignmentSnap(axis,selectedIds,gap){
+  const selected=pieces.filter(p=>selectedIds.includes(p.id));
+  const fixed=pieces.filter(p=>!selectedIds.includes(p.id));
+  const threshold=0.28;let best=null;
+  for(const a of selected)for(const b of fixed){
+    const aEdges=axis==='x'?[a.x,a.x+a.pw]:[a.y,a.y+a.ph];
+    const bEdges=axis==='x'?[b.x,b.x+b.pw]:[b.y,b.y+b.ph];
+    for(const av of aEdges)for(const bv of bEdges){
+      const delta=bv-av,dist=Math.abs(delta);
+      if(dist>1e-7&&dist<=threshold&&(!best||dist<best.dist))best={delta,dist,pos:bv};
+    }
+  }
+  if(!best)return null;
+  for(const p of selected){if(axis==='x')p.x+=best.delta;else p.y+=best.delta;}
+  if(!spacingValid(selected,gap)){
+    for(const p of selected){if(axis==='x')p.x-=best.delta;else p.y-=best.delta;}
+    return null;
+  }
+  return {axis,pos:best.pos};
+}
+function rotatePiece(p){
+  if(!p||!layout||p.type!=='rect')return;
+  const historyBefore=cloneState();
+  const gap=n($('gap').value),margin=Math.max(0,n($('margin').value));
+  const original=pieces.map(q=>({id:q.id,x:q.x,y:q.y,pw:q.pw,ph:q.ph,rot:q.rot||0}));
+  const old=original.find(q=>q.id===p.id);
+  const centerX=p.x+p.pw/2,centerY=p.y+p.ph/2;
+  const rotated={pw:p.ph,ph:p.pw,x:centerX-p.ph/2,y:centerY-p.pw/2,rot:((old.rot||0)+90)%180};
+  const candidates=[];
+  // Avalia reacomodação nos dois eixos e nos dois sentidos.
+  for(const axis of ['x','y'])for(const dir of [-1,1]){
+    for(const q of pieces){
+      const st=original.find(v=>v.id===q.id);
+      q.x=st.x;q.y=st.y;q.pw=st.pw;q.ph=st.ph;q.rot=st.rot;
+    }
+    const rp=pieces.find(q=>q.id===p.id);
+    Object.assign(rp,rotated);
+    pushReaccommodate(axis,dir,gap,[rp.id]);
+    if(!spacingValid(pieces,gap))continue;
+    const minX=Math.min(...pieces.map(q=>q.x));
+    const minY=Math.min(...pieces.map(q=>q.y));
+    const maxX=Math.max(...pieces.map(q=>q.x+q.pw));
+    const maxY=Math.max(...pieces.map(q=>q.y+q.ph));
+    const width=Math.ceil(maxX-minX+2*margin-1e-9);
+    const height=Math.ceil(maxY-minY+2*margin-1e-9);
+    // O custo prioriza a menor área final e, em empate, o menor perímetro.
+    const cost=width*height+0.001*(width+height);
+    candidates.push({
+      cost,width,height,
+      positions:pieces.map(q=>({id:q.id,x:q.x-minX+margin,y:q.y-minY+margin,pw:q.pw,ph:q.ph,rot:q.rot||0}))
+    });
+  }
+  // Restaura o estado original antes de aplicar a melhor alternativa.
+  for(const q of pieces){
+    const st=original.find(v=>v.id===q.id);
+    q.x=st.x;q.y=st.y;q.pw=st.pw;q.ph=st.ph;q.rot=st.rot;
+  }
+  if(!candidates.length){
+    $('summary').innerHTML='<b>Rotação não permitida.</b> Não foi encontrada uma disposição sem sobreposição e com o espaçamento configurado.';
+  }else{
+    candidates.sort((a,b)=>a.cost-b.cost);
+    const best=candidates[0];
+    for(const pos of best.positions){
+      const q=pieces.find(v=>v.id===pos.id);
+      q.x=pos.x;q.y=pos.y;q.pw=pos.pw;q.ph=pos.ph;q.rot=pos.rot;
+    }
+    // Recalcula a folha a partir dos limites reais, com margens e arredondamento.
+    recalcSheetSize();
+    $('summary').innerHTML=`<b>Peça girada e folha recalculada.</b> Nova dimensão estimada: ${f(layout.width)} × ${f(layout.height)} cm. Foi escolhida a menor área entre as quatro reacomodações testadas, respeitando margens e espaçamentos.`;
+  }
+  draw();
+  if(candidates.length)commitHistory(historyBefore);
+}
+c.style.touchAction='none';c.title='Clique para selecionar; segure Ctrl para selecionar várias peças. Arraste a seleção apenas na horizontal ou vertical. Pressione R ou clique com botão direito para girar retângulos.';
+c.addEventListener('contextmenu',e=>{if(!layout)return;e.preventDefault();const t=canvasTransform(),sx=(e.clientX-t.r.left-t.ox)/t.scale,sy=(e.clientY-t.r.top-t.oy)/t.scale;const p=[...pieces].reverse().find(q=>sx>=q.x&&sx<=q.x+q.pw&&sy>=q.y&&sy<=q.y+q.ph);if(p){selectedPieceId=p.id;selectedPieceIds=new Set([p.id]);rotatePiece(p);}});
+document.addEventListener('keydown',e=>{if((e.key==='r'||e.key==='R')&&!['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)&&selectedPieceId!=null){rotatePiece(pieces.find(q=>q.id===selectedPieceId));}});
+c.addEventListener('pointerdown',e=>{if(!layout||!pieces.length)return;const t=canvasTransform(),sx=(e.clientX-t.r.left-t.ox)/t.scale,sy=(e.clientY-t.r.top-t.oy)/t.scale;for(let i=pieces.length-1;i>=0;i--){const p=pieces[i];if(sx>=p.x&&sx<=p.x+p.pw&&sy>=p.y&&sy<=p.y+p.ph){if(e.ctrlKey){if(selectedPieceIds.has(p.id)){selectedPieceIds.delete(p.id);if(!selectedPieceIds.size)selectedPieceId=null;}else selectedPieceIds.add(p.id);selectedPieceId=p.id;}else if(!selectedPieceIds.has(p.id)){selectedPieceIds=new Set([p.id]);selectedPieceId=p.id;}if(!selectedPieceIds.size){draw();return;}const moved=pieces.filter(q=>selectedPieceIds.has(q.id));dragState={beforeState:cloneState(),ids:moved.map(q=>q.id),offsetX:sx-p.x,offsetY:sy-p.y,starts:moved.map(q=>({id:q.id,x:q.x,y:q.y})),allStarts:pieces.map(q=>({id:q.id,x:q.x,y:q.y})),axis:null,startSX:sx,startSY:sy,scale:t.scale,ox:t.ox,oy:t.oy,rectLeft:t.r.left,rectTop:t.r.top};c.setPointerCapture(e.pointerId);e.preventDefault();draw();return;}}if(!e.ctrlKey){selectedPieceIds.clear();selectedPieceId=null;draw();}});
+function pushReaccommodate(axis,dir,gap,selectedIds){
+  const active=new Set(selectedIds),eps=1e-7;
+  let changed=true,passes=0;
+  while(changed&&passes++<pieces.length*pieces.length+5){
+    changed=false;
+    for(const a of pieces){
+      if(!active.has(a.id))continue;
+      for(const b of pieces){
+        if(active.has(b.id))continue;
+        const cross=axis==='x'
+          ?(a.y<b.y+b.ph-eps&&a.y+a.ph>b.y+eps)
+          :(a.x<b.x+b.pw-eps&&a.x+a.pw>b.x+eps);
+        if(!cross)continue;
+        let need=0;
+        if(axis==='x'){
+          if(dir>0&&a.x+a.pw+gap>b.x+eps&&a.x<b.x+b.pw-eps)need=a.x+a.pw+gap-b.x;
+          else if(dir<0&&b.x+b.pw+gap>a.x+eps&&b.x<a.x+a.pw-eps)need=-(b.x+b.pw+gap-a.x);
+        }else{
+          if(dir>0&&a.y+a.ph+gap>b.y+eps&&a.y<b.y+b.ph-eps)need=a.y+a.ph+gap-b.y;
+          else if(dir<0&&b.y+b.ph+gap>a.y+eps&&b.y<a.y+a.ph-eps)need=-(b.y+b.ph+gap-a.y);
+        }
+        if(Math.abs(need)>eps){
+          if(!chainOrigins.has(b.id))chainOrigins.set(b.id,{x:b.x,y:b.y});
+          if(axis==='x')b.x+=need;else b.y+=need;
+          active.add(b.id);changed=true;
+        }
+      }
+    }
+  }
+  return active;
+}
+function restoreChainPieces(gap,selectedIds){
+  // Tenta devolver cada peça empurrada à posição que ocupava antes da cadeia.
+  // Se ainda houver bloqueio, ela permanece onde está e será tentada novamente
+  // no próximo movimento da peça que iniciou a cadeia.
+  const selected=new Set(selectedIds);
+  let restored=true,passes=0;
+  while(restored&&passes++<pieces.length+2){
+    restored=false;
+    for(const [id,origin] of [...chainOrigins.entries()]){
+      if(selected.has(id))continue;
+      const p=pieces.find(q=>q.id===id);
+      if(!p){chainOrigins.delete(id);continue;}
+      const old={x:p.x,y:p.y};
+      p.x=origin.x;p.y=origin.y;
+      const others=pieces.filter(q=>q.id!==id);
+      if(others.every(q=>!overlapsWithGap(p,q,gap))){
+        chainOrigins.delete(id);restored=true;
+      }else{p.x=old.x;p.y=old.y;}
+    }
+  }
+}
+c.addEventListener('pointermove',e=>{if(!dragState||!layout)return;const mx=e.clientX-dragState.rectLeft,my=e.clientY-dragState.rectTop,sx=(mx-dragState.ox)/dragState.scale,sy=(my-dragState.oy)/dragState.scale;const dx=sx-dragState.startSX,dy=sy-dragState.startSY;if(!dragState.axis&&Math.hypot(dx,dy)>0.08)dragState.axis=Math.abs(dx)>=Math.abs(dy)?'x':'y';for(const p of pieces){const st=dragState.allStarts.find(q=>q.id===p.id);if(st){p.x=st.x;p.y=st.y;}}for(const st of dragState.starts){const p=pieces.find(q=>q.id===st.id);if(!p)continue;p.x=st.x+(dragState.axis==='x'?dx:0);p.y=st.y+(dragState.axis==='y'?dy:0);}if(dragState.axis){const delta=dragState.axis==='x'?dx:dy;if(Math.abs(delta)>1e-7)pushReaccommodate(dragState.axis,Math.sign(delta),n($('gap').value),dragState.ids);restoreChainPieces(n($('gap').value),dragState.ids);dragState.snapGuide=applyAlignmentSnap(dragState.axis,dragState.ids,n($('gap').value));}draw();$('summary').innerHTML=`<b>Movendo ${dragState.ids.length} peça(s)…</b> As peças no caminho são reacomodadas automaticamente no eixo ${dragState.axis==='x'?'horizontal':dragState.axis==='y'?'vertical':'a definir'}. Solte para validar.`;});
+function finishDrag(){if(!dragState)return;const gap=n($('gap').value),before=dragState.beforeState;if(!spacingValid(pieces,gap)){for(const st of dragState.allStarts){const p=pieces.find(q=>q.id===st.id);if(p){p.x=st.x;p.y=st.y;}}$('summary').innerHTML='<b>Reacomodação não permitida.</b> Não foi possível manter o espaçamento entre todas as peças; o conjunto voltou à posição anterior.';}else{$('summary').innerHTML=`<b>Posição atualizada.</b> A folha foi ajustada ao menor retângulo que envolve a disposição atual, com margens de ${f(n($('margin').value))} cm. Nova medida: ${f(layout.width)} × ${f(layout.height)} cm.`;recalcSheetSize();commitHistory(before);}dragState.snapGuide=null;draw();dragState=null;}
+c.addEventListener('pointerup',finishDrag);c.addEventListener('pointercancel',finishDrag);
 $('pack').onclick=optimize;
 $('save').onclick=()=>{const data={version:1,groups,gap:$('gap').value,margin:$('margin').value,rotate:$('rotate').value,layout};const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));a.download='tconvidei-otimizador.json';a.click();URL.revokeObjectURL(a.href)};
 $('open').onclick=()=>$('file').click();$('file').onchange=async e=>{try{const d=JSON.parse(await e.target.files[0].text());groups=d.groups||[];$('gap').value=d.gap??.2;$('margin').value=d.margin??.5;$('rotate').value=d.rotate||'yes';layout=null;renderList();if(groups.length)optimize();else draw()}catch{alert('Arquivo de projeto inválido.')}e.target.value=''};
