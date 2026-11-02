@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Tconvidei | Otimizador de Formas — Versão 22</title>
+<title>Tconvidei | Otimizador de Formas — Versão 23</title>
 <style>
 :root{--olive:#687052;--ink:#30312c;--line:#dedbd1;--paper:#fbfaf6;--red:#bf5147}
 *{box-sizing:border-box}body{margin:0;background:#f4f2ec;color:var(--ink);font-family:Arial,Helvetica,sans-serif}
@@ -320,6 +320,27 @@ function canvasTransform(){const r=c.getBoundingClientRect(),pad=45;const scale=
 function overlapsWithGap(a,b,g){return !(a.x+a.pw+g<=b.x+1e-7||b.x+b.pw+g<=a.x+1e-7||a.y+a.ph+g<=b.y+1e-7||b.y+b.ph+g<=a.y+1e-7);}
 function selectionValid(moved,gap,margin){for(const p of moved){if(p.x<margin-1e-7||p.y<margin-1e-7||p.x+p.pw>layout.width-margin+1e-7||p.y+p.ph>layout.height-margin+1e-7)return false;for(const q of pieces){if(moved.includes(q))continue;if(overlapsWithGap(p,q,gap))return false;}}for(let i=0;i<moved.length;i++)for(let j=i+1;j<moved.length;j++)if(overlapsWithGap(moved[i],moved[j],gap))return false;return true;}
 function spacingValid(moved,gap){for(const p of moved){for(const q of pieces){if(moved.includes(q))continue;if(overlapsWithGap(p,q,gap))return false;}}for(let i=0;i<moved.length;i++)for(let j=i+1;j<moved.length;j++)if(overlapsWithGap(moved[i],moved[j],gap))return false;return true;}
+function chainLimitGuide(axis,selectedIds,gap,dir){
+  const selected=pieces.filter(p=>selectedIds.includes(p.id));
+  const fixed=pieces.filter(p=>!selectedIds.includes(p.id));
+  let best=null;
+  for(const a of selected)for(const b of fixed){
+    const cross=axis==='x'
+      ?(a.y<b.y+b.ph-1e-7&&a.y+a.ph>b.y+1e-7)
+      :(a.x<b.x+b.pw-1e-7&&a.x+a.pw>b.x+1e-7);
+    if(!cross)continue;
+    const lead=axis==='x'?(dir>0?a.x+a.pw:a.x):(dir>0?a.y+a.ph:a.y);
+    const limit=axis==='x'
+      ?(dir>0?b.x-gap:b.x+b.pw+gap)
+      :(dir>0?b.y-gap:b.y+b.ph+gap);
+    const distance=dir>0?limit-lead:lead-limit;
+    // Keep the nearest obstacle in front of the moving selection.
+    if(distance>=-0.02&&(!best||distance<best.distance)){
+      best={distance,pos:limit};
+    }
+  }
+  return best?{axis,pos:best.pos}:null;
+}
 function applyAlignmentSnap(axis,selectedIds,gap){
   const selected=pieces.filter(p=>selectedIds.includes(p.id));
   const fixed=pieces.filter(p=>!selectedIds.includes(p.id));
@@ -449,7 +470,9 @@ function restoreChainPieces(gap,selectedIds){
     }
   }
 }
-c.addEventListener('pointermove',e=>{if(!dragState||!layout)return;const mx=e.clientX-dragState.rectLeft,my=e.clientY-dragState.rectTop,sx=(mx-dragState.ox)/dragState.scale,sy=(my-dragState.oy)/dragState.scale;const dx=sx-dragState.startSX,dy=sy-dragState.startSY;if(!dragState.axis&&Math.hypot(dx,dy)>0.08)dragState.axis=Math.abs(dx)>=Math.abs(dy)?'x':'y';for(const p of pieces){const st=dragState.allStarts.find(q=>q.id===p.id);if(st){p.x=st.x;p.y=st.y;}}for(const st of dragState.starts){const p=pieces.find(q=>q.id===st.id);if(!p)continue;p.x=st.x+(dragState.axis==='x'?dx:0);p.y=st.y+(dragState.axis==='y'?dy:0);}if(dragState.axis){const delta=dragState.axis==='x'?dx:dy;if(Math.abs(delta)>1e-7)pushReaccommodate(dragState.axis,Math.sign(delta),n($('gap').value),dragState.ids);restoreChainPieces(n($('gap').value),dragState.ids);dragState.snapGuide=applyAlignmentSnap(dragState.axis,dragState.ids,n($('gap').value));}draw();$('summary').innerHTML=`<b>Movendo ${dragState.ids.length} peça(s)…</b> As peças no caminho são reacomodadas automaticamente no eixo ${dragState.axis==='x'?'horizontal':dragState.axis==='y'?'vertical':'a definir'}. Solte para validar.`;});
+c.addEventListener('pointermove',e=>{if(!dragState||!layout)return;const mx=e.clientX-dragState.rectLeft,my=e.clientY-dragState.rectTop,sx=(mx-dragState.ox)/dragState.scale,sy=(my-dragState.oy)/dragState.scale;const dx=sx-dragState.startSX,dy=sy-dragState.startSY;if(!dragState.axis&&Math.hypot(dx,dy)>0.08)dragState.axis=Math.abs(dx)>=Math.abs(dy)?'x':'y';for(const p of pieces){const st=dragState.allStarts.find(q=>q.id===p.id);if(st){p.x=st.x;p.y=st.y;}}for(const st of dragState.starts){const p=pieces.find(q=>q.id===st.id);if(!p)continue;p.x=st.x+(dragState.axis==='x'?dx:0);p.y=st.y+(dragState.axis==='y'?dy:0);}if(dragState.axis){const delta=dragState.axis==='x'?dx:dy;if(Math.abs(delta)>1e-7)pushReaccommodate(dragState.axis,Math.sign(delta),n($('gap').value),dragState.ids);restoreChainPieces(n($('gap').value),dragState.ids);const movementDir=Math.sign(delta);
+const alignmentGuide=applyAlignmentSnap(dragState.axis,dragState.ids,n($('gap').value));
+dragState.snapGuide=chainLimitGuide(dragState.axis,dragState.ids,n($('gap').value),movementDir)||alignmentGuide;}draw();$('summary').innerHTML=`<b>Movendo ${dragState.ids.length} peça(s)…</b> As peças no caminho são reacomodadas automaticamente no eixo ${dragState.axis==='x'?'horizontal':dragState.axis==='y'?'vertical':'a definir'}. Solte para validar.`;});
 function finishDrag(){if(!dragState)return;const gap=n($('gap').value),before=dragState.beforeState;if(!spacingValid(pieces,gap)){for(const st of dragState.allStarts){const p=pieces.find(q=>q.id===st.id);if(p){p.x=st.x;p.y=st.y;}}$('summary').innerHTML='<b>Reacomodação não permitida.</b> Não foi possível manter o espaçamento entre todas as peças; o conjunto voltou à posição anterior.';}else{$('summary').innerHTML=`<b>Posição atualizada.</b> A folha foi ajustada ao menor retângulo que envolve a disposição atual, com margens de ${f(n($('margin').value))} cm. Nova medida: ${f(layout.width)} × ${f(layout.height)} cm.`;recalcSheetSize();commitHistory(before);}dragState.snapGuide=null;draw();dragState=null;}
 c.addEventListener('pointerup',finishDrag);c.addEventListener('pointercancel',finishDrag);
 $('pack').onclick=optimize;
